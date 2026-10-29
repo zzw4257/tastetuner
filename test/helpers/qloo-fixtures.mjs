@@ -77,6 +77,21 @@ export const searchAmbiguousPayload = {
   ],
 };
 
+/**
+ * 20 个同名匹配：搜索规模变大之后，确认动作必须仍然**够得着**
+ * （实测 20 个匹配时确认按钮落在 y≈2345，要滚三屏）。
+ */
+export const searchAmbiguousTwentyPayload = {
+  success: true,
+  results: Array.from({ length: 20 }, (_, index) => ({
+    entity_id: `eeeeeeee-0000-0000-0000-${String(index + 1).padStart(12, '0')}`,
+    name: `Candidate Film ${String.fromCharCode(65 + index)}`,
+    subtype: 'urn:entity:movie',
+    properties: { release_year: 1990 + index },
+    tags: [],
+  })),
+};
+
 /** /search 一个都没中。 */
 export const searchEmptyPayload = { success: true, results: [] };
 

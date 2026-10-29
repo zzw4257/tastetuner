@@ -658,6 +658,18 @@ export function createServiceController(
     const group = el('div', 'entity-options');
     group.setAttribute('role', 'radiogroup');
     group.setAttribute('aria-label', 'Films with the same name');
+
+    // 吸底确认条要显示**当前选中的是哪一部**，所以先把这个查询准备好。
+    const selectedCandidate = (): { readonly id: string; readonly name: string } | undefined => {
+      const checked = Array.from(
+        group.querySelectorAll('input[type="radio"]'),
+      ).find((input) => (input as HTMLInputElement).checked) as HTMLInputElement | undefined;
+      if (checked === undefined) return undefined;
+      return resolution.kind === 'ambiguous'
+        ? resolution.candidates.find((item) => item.id === checked.value)
+        : undefined;
+    };
+
     resolution.candidates.forEach((candidate, index) => {
       const id = `entity-${index}`;
       const input = el('input', 'mode-radio');
@@ -682,10 +694,20 @@ export function createServiceController(
       if (facts.length > 0) body.append(el('span', 'entity-option-facts', facts.join(' · ')));
       if (index === 0) body.append(el('span', 'entity-option-tag', 'First result from the service'));
       label.append(posterFrame(candidate.imageUrl, `Poster of ${candidate.name}`), body);
+      // 选中变了就刷新吸底条上的名字（每个 radio 自己听，不靠冒泡）。
+      input.addEventListener('change', () => {
+        const picked = selectedCandidate();
+        chosenName.textContent = picked === undefined ? '' : `Selected: ${picked.name}`;
+      });
       group.append(input, label);
     });
     view.resolution.append(group);
 
+    // 确认动作**吸底**：实测 20 个匹配项时，按钮落在三屏之下（y≈2345），
+    // 选中第一部也得滚很久才够得着。做成面板内的吸底条，选中哪一部都够得着；
+    // 键盘与单次确认语义不变（还是同一个 radio 组 + 同一个按钮）。
+    const bar = el('div', 'entity-confirm-bar');
+    const chosenName = el('span', 'entity-confirm-name');
     const confirm = el('button', 'button-primary', 'This one');
     confirm.type = 'button';
     confirm.id = 'entity-confirm';
@@ -710,7 +732,10 @@ export function createServiceController(
         tags: picked.tags,
       });
     });
-    view.resolution.append(confirm);
+    const first = selectedCandidate();
+    chosenName.textContent = first === undefined ? '' : `Selected: ${first.name}`;
+    bar.append(chosenName, confirm);
+    view.resolution.append(bar);
   };
 
   const knobBlock = (

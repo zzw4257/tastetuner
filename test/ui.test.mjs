@@ -12,6 +12,7 @@ import {
   createFixtureAdapter,
   insightsWithTwentyPayload,
   searchAmbiguousPayload,
+  searchAmbiguousTwentyPayload,
 } from './helpers/qloo-fixtures.mjs';
 
 /**
@@ -68,6 +69,9 @@ let ambiguousPort;
 // 第三个服务端：一次真的返回 20 条候选，用来检查"先摊开一部分、剩下能展开"。
 let twentyServer;
 let twentyPort;
+// 第四个服务端：搜索返回 20 个同名匹配，确认动作必须仍然够得着。
+let ambiguousTwentyServer;
+let ambiguousTwentyPort;
 
 const listen = (instance) =>
   new Promise((resolve, reject) => {
@@ -107,6 +111,15 @@ before(async () => {
     }),
   });
   twentyPort = await listen(twentyServer);
+  ambiguousTwentyServer = createStaticServer(distRoot, {
+    adapter: createFixtureAdapter({ search: searchAmbiguousTwentyPayload }),
+    budget: createRequestBudget({
+      enabled: true,
+      limit: 100,
+      stateDir: await mkdtemp(join(tmpdir(), 'taste-tuner-browser-amb20-')),
+    }),
+  });
+  ambiguousTwentyPort = await listen(ambiguousTwentyServer);
   browser = await chromium.launch({ executablePath: CHROME, headless: true });
 });
 
@@ -153,6 +166,9 @@ after(async () => {
   if (serviceServer?.listening) await new Promise((resolve) => serviceServer.close(resolve));
   if (ambiguousServer?.listening) await new Promise((resolve) => ambiguousServer.close(resolve));
   if (twentyServer?.listening) await new Promise((resolve) => twentyServer.close(resolve));
+  if (ambiguousTwentyServer?.listening) {
+    await new Promise((resolve) => ambiguousTwentyServer.close(resolve));
+  }
 });
 
 async function open(options = {}) {
@@ -202,6 +218,22 @@ async function open(options = {}) {
 
 const rowTitles = (page) =>
   page.locator('li.movie-item .movie-title').allTextContents();
+
+/** 打开搜索返回 20 个同名匹配的页面（消歧那条路）。 */
+async function openAmbiguousTwenty(options = {}) {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 1000 },
+    ...options,
+  });
+  const page = await context.newPage();
+  const problems = [];
+  page.on('pageerror', (error) => problems.push(`pageerror: ${error.message}`));
+  await page.goto(`http://127.0.0.1:${ambiguousTwentyPort}/`, { waitUntil: 'load' });
+  await page.fill('#seed-input', 'Sample Film');
+  await page.click('#seed-submit');
+  await page.waitForSelector('#entity-confirm', { timeout: 15000 });
+  return { page, context, problems };
+}
 
 /** 打开一次返回 20 条候选的真实主线页面。 */
 async function openTwenty(options = {}) {
@@ -1149,4 +1181,46 @@ test('the unavailable state is visible outside the diagnostics and can be recove
   await page.locator('#service-retry-status').click();
   await page.waitForSelector('#service-unavailable', { state: 'hidden', timeout: 15000 });
   await context.close();
+});
+
+test('with 20 matches the confirmation stays reachable in the viewport', async () => {
+  for (const [name, viewport] of [
+    ['desktop', { width: 1440, height: 1000 }],
+    ['mobile', { width: 390, height: 844 }],
+  ]) {
+    const { page, context, problems } = await openAmbiguousTwenty({ viewport });
+    const confirm = page.locator('#entity-confirm');
+
+    const inViewport = async (label) => {
+      const box = await confirm.boundingBox();
+      assert.ok(box !== null, `${name}: 确认按钮必须存在`);
+      assert.ok(
+        box.y >= 0 && box.y + box.height <= viewport.height,
+        `${name}: ${label} 确认按钮必须在视口内（y=${Math.round(box.y)}）`,
+      );
+    };
+
+    // 一开始就够得着（不用先滚三屏）。
+    await inViewport('一开始');
+
+    // 选中第一部：吸底条上的名字要跟着变。
+    await page.locator('label[for="entity-0"]').click();
+    await page.waitForTimeout(120);
+    assert.match(await page.locator('.entity-confirm-name').innerText(), /Candidate Film A/);
+    await inViewport('选中第一部后');
+
+    // 选中最后一部（要先滚到列表底部）。
+    await page.locator('label[for="entity-19"]').click();
+    await page.waitForTimeout(120);
+    assert.match(await page.locator('.entity-confirm-name').innerText(), /Candidate Film T/);
+    await inViewport('选中最后一部后');
+
+    // 确认后用的是**选中那个**实体的身份，消歧列表收起来。
+    await confirm.click();
+    await page.waitForSelector('.service-item', { timeout: 15000 });
+    assert.match(await page.locator('.seed-bar').innerText(), /Candidate Film T/);
+    assert.equal(await page.locator('#entity-confirm').count(), 0, '确认后消歧面板收起来');
+    assert.deepEqual(problems, [], `${name}: 不该有页面报错`);
+    await context.close();
+  }
 });

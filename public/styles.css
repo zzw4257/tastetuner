@@ -32,7 +32,9 @@ html {
 
 body {
   margin: 0;
-  overflow-x: hidden;
+  /* 横向裁剪只留给 html：body 上再写一份 overflow-x 会让 body 变成滚动容器
+     （overflow-y 被算成 auto），**position: sticky 就再也贴不住视口**——
+     实测消歧确认条因此停在 y≈1484，够不着。 */
   overflow-wrap: anywhere;
   background: var(--paper);
   color: var(--ink);
@@ -1616,6 +1618,31 @@ p.evidence-title {
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 0.71875rem;
+}
+
+/* 消歧确认条：吸在视口底部，20 个匹配项时也够得着（实测按钮原本在 y≈2345）。 */
+.entity-confirm-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.entity-confirm-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .entity-option-tag {
