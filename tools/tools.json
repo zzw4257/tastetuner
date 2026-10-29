@@ -1,0 +1,104 @@
+{
+  "name": "taste-tuner",
+  "version": "1",
+  "description": "Structured tools for driving TasteTuner. Every tool talks to the running app (or its saved-response replay server) over its own HTTP API, so budgets, credentials, parsing and re-ranking are the production path — not a second implementation.",
+  "base_url": {
+    "env": "TASTE_TUNER_BASE_URL",
+    "default": "http://127.0.0.1:4173",
+    "note": "Point this at a live instance, or at a saved-response replay server to consume cached data without issuing API calls."
+  },
+  "tools": [
+    {
+      "name": "resolve_seed",
+      "summary": "Resolve a film title to real entities.",
+      "description": "Resolves a title through the app's search step. When several real entities match, the result is ambiguous and the caller must pick one of the returned candidates before asking for candidates.",
+      "input_schema": {
+        "type": "object",
+        "required": ["seed"],
+        "additionalProperties": false,
+        "properties": {
+          "seed": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "The title to resolve."
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": ["movie", "artist"],
+            "default": "movie",
+            "description": "Which category to search in. Output stays movies either way."
+          }
+        }
+      },
+      "transport": { "kind": "http", "method": "POST", "path": "/api/resolve" }
+    },
+    {
+      "name": "get_candidates",
+      "summary": "Fetch candidate films for a confirmed seed entity.",
+      "description": "Issues the recommendation call for one confirmed entity id. The service returns the candidates, their affinity/popularity values and the explainability attribution.",
+      "input_schema": {
+        "type": "object",
+        "required": ["entity_id"],
+        "additionalProperties": false,
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Entity id returned by resolve_seed."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "default": 5,
+            "description": "How many candidates to request (the event API path takes at most 5 here)."
+          }
+        }
+      },
+      "transport": { "kind": "http", "method": "POST", "path": "/api/candidates" }
+    },
+    {
+      "name": "reorder_candidates",
+      "summary": "Re-rank an already fetched candidate set locally.",
+      "description": "Applies hard constraints and the three weights to a frozen candidate set. No network call is made; the same production ranker the UI uses is reused.",
+      "input_schema": {
+        "type": "object",
+        "required": ["candidates"],
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "object" },
+            "description": "Candidates as returned by get_candidates."
+          },
+          "seed_tags": {
+            "type": "array",
+            "items": { "type": "object" },
+            "default": [],
+            "description": "Tags of the confirmed seed, used for tag similarity."
+          },
+          "weights": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "affinity": { "type": "integer", "minimum": 0, "maximum": 100, "default": 100 },
+              "popularity": { "type": "integer", "minimum": 0, "maximum": 100, "default": 0 },
+              "tag_similarity": { "type": "integer", "minimum": 0, "maximum": 100, "default": 0 }
+            }
+          },
+          "constraint": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "max_content_rating": { "type": ["string", "null"], "default": null },
+              "min_release_year": { "type": ["integer", "null"], "default": null }
+            }
+          }
+        }
+      },
+      "transport": { "kind": "local" }
+    }
+  ]
+}

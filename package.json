@@ -1,0 +1,31 @@
+{
+  "name": "taste-tuner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "compile": "tsc",
+    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build.mjs",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "serve": "npm run build && node scripts/serve.mjs",
+    "dev": "npm run serve",
+    "replay": "node scripts/replay.mjs"
+  },
+  "devDependencies": {
+    "@playwright/cli": "0.1.22",
+    "@qloo/qloo-harness": "0.1.26",
+    "linkedom": "0.18.14",
+    "playwright": "1.64.0-alpha-1790635538000",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@vercel/blob": "2.8.2"
+  },
+  "overrides": {
+    "zod": "4.6.7"
+  }
+}

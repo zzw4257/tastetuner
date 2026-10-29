@@ -1,0 +1,24 @@
+node_modules/
+dist/
+coverage/
+
+# 凭据与账本：绝不入库
+.taste-tuner/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*
+secrets*
+
+# 原始响应与本地证据：绝不入库
+artifacts/
+raw-responses/
+api-responses/
+
+*.log
+logs/
+.DS_Store
+__pycache__/
+*.pyc
