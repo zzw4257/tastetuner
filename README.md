@@ -1,5 +1,9 @@
 # TasteTuner
 
+**Live app:** https://tastetuner.vercel.app · **Source:** https://github.com/zzw4257/tastetuner
+
+Start with a movie title, confirm the right film, then browse up to 20 service-returned candidates. The hosted judging demo uses a bounded shared request allowance and stops at its cap or on 6 November 2026, 04:45 UTC. Local re-ranking sends no new requests.
+
 A taste-first movie picker built on Qloo. Type a film you like, pick the right entity when the
 title is ambiguous, and get films ranked from data the service actually returned — with the
 ranking explained field by field.
