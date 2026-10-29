@@ -48,24 +48,43 @@ export function prefersReducedMotion(): boolean {
  * 图加载不出来（没网、被安全策略挡住、服务压根没给）就换成一块诚实的文字块。
  * 不画占位海报，也不拿别处的图来凑——没有图就是没有图。
  */
+/**
+ * 已经真加载成功过的海报地址。
+ *
+ * 本地重排会重建卡片（renderList 每次 replaceChildren），于是同一张海报会**再 new 一次**。
+ * 命中缓存就直接可见：不闪空、不重播一次淡入。只有第一次真加载才淡入。
+ */
+const loadedPosterUrls = new Set<string>();
+
 export function posterFrame(imageUrl: string | undefined, altText: string): HTMLElement {
   const frame = el('div', 'poster');
   // 两件事要说准：**服务没给**海报，和**给了但没加载出来**，不是一回事。
-  // 后者不能说"没有图片"——服务明明给了地址。
-  const degrade = (text: string): void => {
-    frame.classList.add('is-empty');
+  // 后者不能说"没有图片"——服务明明给了地址，而且 2:3 的位还占着：
+  // 慢网或图挂了都不能让下面的字往上跳。
+  const note = (text: string, state: 'is-empty' | 'is-failed'): void => {
+    frame.classList.add(state);
     frame.replaceChildren(el('span', 'poster-note', text));
   };
   if (imageUrl === undefined) {
-    degrade('The service did not provide a poster');
+    // 一开始就没有图：紧凑状态，不占 2:3 的位。
+    note('The service did not provide a poster', 'is-empty');
     return frame;
   }
   const image = el('img', 'poster-image');
-  image.src = imageUrl;
   image.alt = altText;
   image.loading = 'lazy';
   image.decoding = 'async';
-  image.addEventListener('error', () => degrade('The poster could not be loaded'));
+  // 事件先挂再给 src：命中缓存时 load 可能已经过去了。
+  image.addEventListener('load', () => {
+    loadedPosterUrls.add(imageUrl);
+    image.classList.add('is-loaded');
+  });
+  if (loadedPosterUrls.has(imageUrl)) {
+    // 命中缓存（本地重排重建了卡片）：一上来就可见。
+    image.classList.add('is-loaded');
+  }
+  image.addEventListener('error', () => note('The poster could not be loaded', 'is-failed'));
+  image.src = imageUrl;
   frame.append(image);
   return frame;
 }

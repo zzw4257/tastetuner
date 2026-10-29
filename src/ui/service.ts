@@ -410,6 +410,11 @@ export function createServiceController(
   // 用同一个标志会把取候选挡掉。
   let loadingCandidates = false;
   /**
+   * 结果入场只在网上响应真的画出候选时才播：本地重排（改权重/改约束）不重播。
+   * 用一次性标记而不是参数：renderList 的调用点很多，只有网络那条需要入场。
+   */
+  let entrancePending = false;
+  /**
    * 折叠区的展开状态要跨重画活下来。
    * 重画只重画内容；用户刚点开的「调整顺序」不该在重置之后自己合上。
    * null 表示"Not decided yet"，这时才按屏幕宽窄取默认值。
@@ -1022,6 +1027,9 @@ export function createServiceController(
   };
 
   const renderList = (): void => {
+    // 入场标记在这里被消费掉：这一次渲染带入场，之后的本地重排不再带。
+    view.list.classList.toggle('is-entering', entrancePending);
+    entrancePending = false;
     view.list.replaceChildren();
     // 标题写清里面是哪一类实体——否则选了"Artist"之后看到的是什么就没处问。
     view.listHeading.textContent =
@@ -1521,6 +1529,8 @@ export function createServiceController(
             : { explainabilityWarning: outcome.explainabilityWarning }),
         };
         selectedId = outcome.candidates[0]?.id ?? null;
+        // 这一批是服务刚送回来的：让结果卡逐张入场（本地重排不会走到这里）。
+        entrancePending = true;
         // 消歧面板被收走了，焦点别丢：把它送到结果区的标题上。
         view.listHeading.focus();
         announce(`Fetched ${outcome.candidates.length} candidates.`);

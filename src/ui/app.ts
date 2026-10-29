@@ -638,6 +638,8 @@ function setMode(next: ModeId): void {
     view.modeBanner.textContent = '';
   } else {
     view.badge.textContent = 'Synthetic data · offline demo';
+    // 演示模式不依赖服务状态：话已经说准了，胶囊直接显形。
+    view.badge.classList.add('is-ready');
     // 演示模式讲的是另一件事：标题也得跟着换，不能还写着"Find similar films"。
     view.introHeading.textContent = 'Understand a ranking change';
     view.introCopy.textContent =
@@ -663,6 +665,8 @@ const serviceController = createServiceController(view.service, createServiceApi
     // 这时徽标不能还写"Live service"——那看上去像一切正常。
     serviceUnavailable = status.accessSurface === 'unknown';
     if (mode === 'service') setMode('service');
+    // 状态真的回来了（200），胶囊才淡入：位宽早就留好了，换字不推东西。
+    view.badge.classList.add('is-ready');
   },
 });
 

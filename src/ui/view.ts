@@ -1,4 +1,4 @@
-import { el } from './dom.js';
+import { el, svgEl } from './dom.js';
 import type { Scenario } from '../adapters/scenarios.js';
 import { createServiceView, type ServiceView } from './service.js';
 
@@ -46,6 +46,30 @@ export interface View {
   readonly importStatus: HTMLParagraphElement;
 }
 
+/**
+ * 品牌标记：public/favicon.svg 的几何原样内联成 SVG。
+ *
+ * 内联而不是 <img>：省一次请求，而且颜色走 CSS（.bm-tile/.bm-bar），
+ * 柱子的入场动画才能直接作用在 SVG 元素上。
+ */
+function brandMark(): SVGSVGElement {
+  const svg = svgEl('svg', {
+    class: 'brand-mark',
+    viewBox: '0 0 32 32',
+    width: 32,
+    height: 32,
+    'aria-hidden': 'true',
+  });
+  svg.append(
+    svgEl('rect', { class: 'bm-tile', width: 32, height: 32, rx: 8 }),
+    // 三根柱子共用同一条基线 y=24：矮的是已有一部的，高度差就是下一部的位置。
+    svgEl('rect', { class: 'bm-bar b1', x: 8, y: 17, width: 4, height: 7 }),
+    svgEl('rect', { class: 'bm-bar b2', x: 14, y: 11, width: 4, height: 13 }),
+    svgEl('rect', { class: 'bm-bar b3', x: 20, y: 8, width: 4, height: 16 }),
+  );
+  return svg;
+}
+
 function createChrome(): {
   shell: HTMLDivElement;
   badge: HTMLElement;
@@ -56,7 +80,12 @@ function createChrome(): {
 
   const masthead = el('header', 'masthead');
   const badge = el('p', 'demo-badge', 'Checking the live service…');
-  masthead.append(el('p', 'brand', 'TasteTuner'), badge);
+  const brand = el('a', 'brand');
+  brand.href = '/';
+  // 窄屏会藏掉字标，标记本身是 aria-hidden —— 没有这句这个链接就没有可访问名。
+  brand.setAttribute('aria-label', 'TasteTuner');
+  brand.append(brandMark(), el('span', 'brand-word', 'TasteTuner'));
+  masthead.append(brand, badge);
 
   const intro = el('section', 'intro');
   const introCopy = el(

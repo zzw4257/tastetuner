@@ -82,12 +82,160 @@ h3 {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  /* 品牌全名优先：锁定区不缩、不截断。窄屏的压力由状态胶囊那边吸收。 */
+  flex: 0 0 auto;
   margin: 0;
+  /* 标记的底比字标基线低 8px（方块到 y=32），给它留出位置。 */
+  padding-bottom: 8px;
+  color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: 1.0625rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* 标记 = favicon 的几何内联版：方块 + 两根象牙柱 + 一根深红柱，三柱共用基线 y=24。 */
+.brand-mark {
+  flex: none;
+  /* SVG 的基线在盒子底边；把基线往上提 8px，柱基线（y=24）才和字标基线齐。 */
+  margin-bottom: -8px;
+}
+
+.brand-word {
+  /* 产品名不许被截断：宁可让状态胶囊缩。 */
+  flex: none;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.bm-tile {
+  fill: var(--ink);
+}
+
+.bm-bar {
+  fill: var(--paper);
+}
+
+.bm-bar.b3 {
+  fill: var(--accent);
+}
+
+@keyframes tt-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes tt-lift {
+  from {
+    transform: translateY(8px);
+  }
+}
+
+@keyframes tt-rise {
+  from {
+    transform: scaleY(0.3);
+  }
+}
+
+/*
+ * 入场只在用户没要求减少动效时存在。
+ * 减少动效时全部是静态可见的最终状态：没有位移、没有淡入，输入框从第一帧就能敲。
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .brand-mark .bm-bar {
+    transform-box: fill-box;
+    transform-origin: bottom;
+    animation: tt-rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .brand-mark .bm-bar.b1 {
+    animation-delay: 0ms;
+  }
+
+  .brand-mark .bm-bar.b2 {
+    animation-delay: 60ms;
+  }
+
+  .brand-mark .bm-bar.b3 {
+    animation-delay: 120ms;
+  }
+
+  .brand-word,
+  .eyebrow {
+    animation: tt-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: 80ms;
+  }
+
+  h1 {
+    animation: tt-in 480ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: 140ms;
+  }
+
+  .intro-copy {
+    animation: tt-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: 220ms;
+  }
+
+  /* 搜索面板只做位移：输入框从第一帧就在，敲字不用等动画。 */
+  .find-form {
+    animation: tt-lift 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: 260ms;
+  }
+
+  /* 状态胶囊：位宽先留好，状态回来再淡入；换字不推任何东西。 */
+  .demo-badge {
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+
+  .demo-badge.is-ready {
+    opacity: 1;
+  }
+
+  /* 结果卡：只在网上响应真的画出结果时入场，本地重排不播。 */
+  .service-list.is-entering > .service-item {
+    animation: tt-in 240ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .service-list.is-entering > .service-item:nth-child(1) {
+    animation-delay: 0ms;
+  }
+
+  .service-list.is-entering > .service-item:nth-child(2) {
+    animation-delay: 30ms;
+  }
+
+  .service-list.is-entering > .service-item:nth-child(3) {
+    animation-delay: 60ms;
+  }
+
+  .service-list.is-entering > .service-item:nth-child(4) {
+    animation-delay: 90ms;
+  }
+
+  .service-list.is-entering > .service-item:nth-child(5) {
+    animation-delay: 120ms;
+  }
+
+  .service-list.is-entering > .service-item:nth-child(6) {
+    animation-delay: 150ms;
+  }
+
+  .service-list.is-entering > .service-item:nth-child(7) {
+    animation-delay: 180ms;
+  }
+
+  .service-list.is-entering > .service-item:nth-child(8) {
+    animation-delay: 210ms;
+  }
 }
 
 .demo-badge {
@@ -99,6 +247,34 @@ h3 {
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
+  /* 预留最长状态文案的位宽：状态换字时胶囊不动，页面不抖。 */
+  min-width: 29ch;
+}
+
+/* 窄屏：字号收一档，锁定区与状态胶囊才挤得进，头部高度不变。 */
+@media (max-width: 430px) {
+  /* 字标字号不动（动了头部高度就会和桌面不一致）；改由状态胶囊让出宽度。
+     胶囊自己截断显示，但**完整文字仍留在 DOM 里**（可访问名是全文）。 */
+  .demo-badge {
+    flex: 0 1 auto;
+    width: 7.5rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.625rem;
+  }
+}
+
+/* 最窄的一档（小屏手机）：字标让位给状态胶囊，标记本身留着。 */
+@media (max-width: 379px) {
+  .brand-word {
+    display: none;
+  }
+
+  .demo-badge {
+    font-size: 0.625rem;
+    min-width: 24ch;
+  }
 }
 
 .intro {
@@ -1669,6 +1845,21 @@ p.evidence-title {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* 真正的图到了才淡入；框的位置早就留好了，慢网也不会跳。 */
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.poster-image.is-loaded {
+  opacity: 1;
+}
+
+/* 服务给了地址但没加载出来：2:3 的位照样留着，只写一句说明，不画假图。 */
+.poster.is-failed {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  text-align: center;
 }
 
 /* 海报没显示时不留一个大灰框：收成一行字，卡片也就不再为它留位置。 */
